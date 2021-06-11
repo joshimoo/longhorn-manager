@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -242,6 +243,7 @@ func (bic *BackingImageController) syncBackingImage(key string) (err error) {
 		if reflect.DeepEqual(existingBackingImage.Status, backingImage.Status) {
 			return
 		}
+		bic.logger.Debugf("Backing Image Status changed: %v", cmp.Diff(existingBackingImage.Status, backingImage.Status))
 		if _, err := bic.ds.UpdateBackingImageStatus(backingImage); err != nil && apierrors.IsConflict(errors.Cause(err)) {
 			log.WithError(err).Debugf("Requeue %v due to conflict", key)
 			bic.enqueueBackingImage(backingImage)

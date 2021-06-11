@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -238,6 +239,7 @@ func (ic *EngineImageController) syncEngineImage(key string) (err error) {
 	existingEngineImage := engineImage.DeepCopy()
 	defer func() {
 		if err == nil && !reflect.DeepEqual(existingEngineImage.Status, engineImage.Status) {
+			ic.logger.Debugf("Engine Image Status changed: %v", cmp.Diff(existingEngineImage.Status, engineImage.Status))
 			_, err = ic.ds.UpdateEngineImageStatus(engineImage)
 		}
 		if apierrors.IsConflict(errors.Cause(err)) {

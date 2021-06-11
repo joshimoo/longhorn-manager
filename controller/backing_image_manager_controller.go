@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -278,6 +279,7 @@ func (c *BackingImageManagerController) syncBackingImageManager(key string) (err
 	existingBIM := bim.DeepCopy()
 	defer func() {
 		if err == nil && !reflect.DeepEqual(existingBIM.Status, bim.Status) {
+			c.logger.Debugf("Backing Image Manager Status changed: %v", cmp.Diff(existingBIM.Status, bim.Status))
 			_, err = c.ds.UpdateBackingImageManagerStatus(bim)
 		}
 		if apierrors.IsConflict(errors.Cause(err)) {

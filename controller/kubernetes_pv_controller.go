@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -222,6 +223,7 @@ func (kc *KubernetesPVController) syncKubernetesStatus(key string) (err error) {
 	defer func() {
 		// we're going to update volume assume things changes
 		if err == nil && !reflect.DeepEqual(existingVolume.Status, volume.Status) {
+			kc.logger.Debugf("Volume Status changed: %v", cmp.Diff(existingVolume.Status, volume.Status))
 			_, err = kc.ds.UpdateVolumeStatus(volume)
 		}
 		// requeue if it's conflict

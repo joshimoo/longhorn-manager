@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -374,6 +375,9 @@ func (vc *VolumeController) syncVolume(key string) (err error) {
 		for k, r := range replicas {
 			if existingReplicas[k] == nil ||
 				!reflect.DeepEqual(existingReplicas[k].Spec, r.Spec) {
+				if existingReplicas[k] != nil {
+					vc.logger.Debugf("Replica Spec changed: %v", cmp.Diff(existingReplicas[k].Spec, r.Spec))
+				}
 				if _, err := vc.ds.UpdateReplica(r); err != nil {
 					lastErr = err
 				}
@@ -384,6 +388,9 @@ func (vc *VolumeController) syncVolume(key string) (err error) {
 			for k, e := range engines {
 				if existingEngines[k] == nil ||
 					!reflect.DeepEqual(existingEngines[k].Spec, e.Spec) {
+					if existingEngines[k] != nil {
+						vc.logger.Debugf("Engine Spec changed: %v", cmp.Diff(existingEngines[k].Spec, e.Spec))
+					}
 					if _, err := vc.ds.UpdateEngine(e); err != nil {
 						lastErr = err
 					}
@@ -395,6 +402,7 @@ func (vc *VolumeController) syncVolume(key string) (err error) {
 			// Make sure that we don't update condition's LastTransitionTime if the condition's values hasn't changed
 			handleConditionLastTransitionTime(&existingVolume.Status, &volume.Status)
 			if !reflect.DeepEqual(existingVolume.Status, volume.Status) {
+				vc.logger.Debugf("Volume Status changed: %v", cmp.Diff(existingVolume.Status, volume.Status))
 				// reuse err
 				_, err = vc.ds.UpdateVolumeStatus(volume)
 			}

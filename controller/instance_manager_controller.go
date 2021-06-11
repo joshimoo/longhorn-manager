@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -297,6 +298,7 @@ func (imc *InstanceManagerController) syncInstanceManager(key string) (err error
 	existingIM := im.DeepCopy()
 	defer func() {
 		if err == nil && !reflect.DeepEqual(existingIM.Status, im.Status) {
+			imc.logger.Debugf("Instance Manager Status changed: %v", cmp.Diff(existingIM.Status, im.Status))
 			_, err = imc.ds.UpdateInstanceManagerStatus(im)
 		}
 		if apierrors.IsConflict(errors.Cause(err)) {
@@ -1179,6 +1181,7 @@ func (m *InstanceManagerMonitor) pollAndUpdateInstanceMap() (needStop bool) {
 	if reflect.DeepEqual(im.Status.Instances, resp) {
 		return false
 	}
+	m.logger.Debugf("Instance Status changed: %v", cmp.Diff(im.Status.Instances, resp))
 	im.Status.Instances = resp
 	if _, err := m.ds.UpdateInstanceManagerStatus(im); err != nil {
 		utilruntime.HandleError(errors.Wrapf(err, "failed to update instance map for instance manager %v", m.Name))

@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -300,6 +301,7 @@ func (nc *NodeController) syncNode(key string) (err error) {
 	defer func() {
 		// we're going to update volume assume things changes
 		if err == nil && !reflect.DeepEqual(existingNode.Status, node.Status) {
+			nc.logger.Debugf("Node Status changed: %v", cmp.Diff(existingNode.Status, node.Status))
 			_, err = nc.ds.UpdateNodeStatus(node)
 		}
 		// requeue if it's conflict

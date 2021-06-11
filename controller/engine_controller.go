@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -261,6 +262,7 @@ func (ec *EngineController) syncEngine(key string) (err error) {
 	defer func() {
 		// we're going to update engine assume things changes
 		if err == nil && !reflect.DeepEqual(existingEngine.Status, engine.Status) {
+			ec.logger.Debugf("Engine Status changed: %v", cmp.Diff(existingEngine.Status, engine.Status))
 			_, err = ec.ds.UpdateEngineStatus(engine)
 		}
 		// requeue if it's conflict

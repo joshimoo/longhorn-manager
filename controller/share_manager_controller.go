@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -314,6 +315,7 @@ func (c *ShareManagerController) syncShareManager(key string) (err error) {
 	existingShareManager := sm.DeepCopy()
 	defer func() {
 		if !reflect.DeepEqual(existingShareManager.Status, sm.Status) {
+			c.logger.Debugf("Share Manager Status changed: %v", cmp.Diff(existingShareManager.Status, sm.Status))
 			// we end up overwriting any prior errors
 			// but if the update works, the share manager will be
 			// enqueued again anyway

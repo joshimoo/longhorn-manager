@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -320,6 +321,7 @@ func (rc *ReplicaController) syncReplica(key string) (err error) {
 	defer func() {
 		// we're going to update replica assume things changes
 		if err == nil && !reflect.DeepEqual(existingReplica.Status, replica.Status) {
+			rc.logger.Debugf("Replica Status changed: %v", cmp.Diff(existingReplica.Status, replica.Status))
 			_, err = rc.ds.UpdateReplicaStatus(replica)
 		}
 		// requeue if it's conflict
