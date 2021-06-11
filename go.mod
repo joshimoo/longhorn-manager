@@ -37,6 +37,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
 	github.com/golang/protobuf v1.3.3-0.20190920234318-1680a479a2cf
 	github.com/google/btree v1.0.0 // indirect
+	github.com/google/go-cmp v0.5.6
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
@@ -78,5 +79,4 @@ require (
 	k8s.io/kubernetes v1.16.15
 	k8s.io/metrics v0.16.15
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
-	sigs.k8s.io/sig-storage-lib-external-provisioner v4.0.1+incompatible
 )
