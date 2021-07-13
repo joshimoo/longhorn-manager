@@ -20,6 +20,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 
 	longhornclient "github.com/longhorn/longhorn-manager/client"
+	"github.com/longhorn/longhorn-manager/csi/crypto"
 	"github.com/longhorn/longhorn-manager/csi/nfs"
 	"github.com/longhorn/longhorn-manager/types"
 )
@@ -133,6 +134,44 @@ func (ns *NodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			return nil, fmt.Errorf("volume %v cannot get format mounter that support filesystem %v creation", volumeID, fsType)
 		}
 
+		diskFormat, err := formatMounter.GetDiskFormat(devicePath)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to evaluate device filesystem format")
+		}
+
+		logrus.Debugf("NodePublishVolume: volume %v device %v contains filesystem of format %v", volumeID, devicePath, diskFormat)
+
+		// TODO: lets hack a test for encrypted volumes
+		secrets := req.GetSecrets()
+		if len(secrets) > 0 {
+			// Do the necessary crypto stuff
+			passphrase := secrets["passphrase"]
+			if len(passphrase) == 0 {
+				return nil, status.Error(codes.InvalidArgument, "missing passphrase in secret")
+			}
+
+			if diskFormat != "" && diskFormat != "crypto_LUKS" {
+				return nil, status.Errorf(codes.InvalidArgument, "unsupported disk encryption format %v", diskFormat)
+			}
+
+			// initial setup of longhorn device for crypto
+			if diskFormat == "" {
+				if err := crypto.EncryptVolume(devicePath, passphrase); err != nil {
+					return nil, status.Error(codes.Internal, err.Error())
+				}
+			}
+
+			cryptoDevice := crypto.VolumeMapper(volumeID)
+			logrus.Debugf("NodePublishVolume: volume %s requires crypto device %s", volumeID, cryptoDevice)
+
+			if err := crypto.OpenVolume(volumeID, devicePath, passphrase); err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+
+			// update the device path to point to the new crypto device
+			devicePath = cryptoDevice
+		}
+
 		return ns.nodePublishMountVolume(volumeID, devicePath, targetPath, fsType, options, formatMounter)
 	}
 
@@ -242,6 +281,18 @@ func (ns *NodeServer) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 
 	if err := cleanupMountPoint(targetPath, mount.New("")); err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to cleanup volume %s mount point %v error %v", volumeID, targetPath, err))
+	}
+
+	// TODO: close the crypto device if it's a secure volume
+	cryptoDevice := crypto.VolumeMapper(volumeID)
+	if isOpen, err := crypto.IsDeviceOpen(cryptoDevice); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	} else if isOpen {
+		logrus.Debugf("NodeUnpublishVolume: volume %s has active crypto device %s", volumeID, cryptoDevice)
+		if err := crypto.CloseVolume(volumeID); err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		logrus.Infof("NodeUnpublishVolume: volume %s closed active crypto device %s", volumeID, cryptoDevice)
 	}
 
 	logrus.Infof("NodeUnpublishVolume: volume %s unmounted from path %s", volumeID, targetPath)
